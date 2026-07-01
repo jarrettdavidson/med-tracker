@@ -447,9 +447,29 @@ function render(){
   app.innerHTML=h;
 }
 
+function dosesToday(m){
+  var now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+  var end=start+86400000;
+  if(!m.history)return 0;
+  return m.history.filter(function(h){
+    if(h.action!=='took')return false;
+    var t=new Date(h.date).getTime();
+    return t>=start&&t<end;
+  }).reduce(function(sum,h){return sum+(h.count||1)},0);
+}
 function take(id){
   var meds=load(),m=meds.find(function(x){return x.id===id});
-  if(!m||m.currentCount<=0)return;
+  if(!m)return;
+  if(m.currentCount<=0){alert('No doses remaining. Time to refill!');return}
+  var freq=m.frequency||1;
+  var taken=dosesToday(m);
+  // For weekly meds (freq<1), max 1 per day
+  var maxPerDay=freq>=1?Math.ceil(freq):1;
+  if(taken>=maxPerDay){
+    if(!confirm('You\'ve already logged '+taken+' dose'+(taken!==1?'s':'')+' today (max '+maxPerDay+'/day).\n\nLog another anyway?'))return;
+  }else{
+    if(!confirm('Log 1 dose of '+m.name+'?'))return;
+  }
   m.currentCount--;
   m.history.push({action:'took',count:1,remaining:m.currentCount,date:new Date().toISOString()});
   store(meds);render();
