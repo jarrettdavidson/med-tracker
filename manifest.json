@@ -1,14 +1,1 @@
-{
-  "name": "Med Tracker",
-  "short_name": "MedTracker",
-  "description": "Track medication dosages and refill timing",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#F5F6FA",
-  "theme_color": "#F5F6FA",
-  "orientation": "portrait",
-  "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
-}
+{"name":"Med Tracker","short_name":"MedTracker","description":"Track medication dosages and refill timing","start_url":"./index.html","display":"standalone","background_color":"#CEDDEF","theme_color":"#CEDDEF","orientation":"portrait","icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png"}]}
