@@ -225,6 +225,33 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
 .empty-t{font-family:'Outfit',sans-serif;font-size:17px;color:var(--text);margin-bottom:6px;font-weight:600}
 .empty-s{font-size:13px}
 
+
+.type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.type-btn{
+  height:42px;border-radius:var(--r-sm);border:1px solid var(--border);
+  background:transparent;color:var(--text-dim);font-size:13px;font-weight:600;
+  font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all 0.15s;
+}
+.type-btn.active{border-color:var(--teal);color:var(--teal);background:var(--teal-dim)}
+
+.sup-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);margin-bottom:8px;overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:border-color 0.2s;
+}
+.sup-card.flash{animation:flashPulse 0.4s ease}
+.sup-main{padding:12px 16px;display:flex;align-items:center;gap:12px}
+.sup-icon{font-size:18px;opacity:0.7}
+.sup-info{flex:1;min-width:0}
+.sup-name{font-family:'Outfit',sans-serif;font-size:15px;font-weight:700}
+.sup-dose{font-size:11px;color:var(--text-dim);margin-top:1px}
+.sup-count{
+  font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;
+  min-width:40px;text-align:center;
+}
+.sup-count-label{font-size:9px;color:var(--text-dim);text-align:center;text-transform:uppercase;letter-spacing:0.3px}
+.sup-actions{display:flex;border-top:1px solid var(--border)}
+
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -250,7 +277,14 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
     <form id="mForm" onsubmit="save(event)">
       <input type="hidden" id="editId">
       <div class="fg">
-        <label class="fl">Medication Name</label>
+        <label class="fl">Type</label>
+        <div class="type-toggle">
+          <button type="button" class="type-btn active" data-val="med" onclick="setType('med')">💊 Medication</button>
+          <button type="button" class="type-btn" data-val="sup" onclick="setType('sup')">🌿 Supplement</button>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl" id="nameLabel">Medication Name</label>
         <input class="fi" id="fName" placeholder="e.g. Vyvanse" required autocomplete="off">
       </div>
       <div class="fi-row">
@@ -273,6 +307,7 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
           <button type="button" class="tod-btn" data-val="asneeded"><span class="tod-ic">⚡</span>PRN</button>
         </div>
       </div>
+      <div id="medOnlyFields">
       <div class="fg">
         <label class="fl">Frequency</label>
         <div class="freq-row" id="freqGrid">
@@ -282,8 +317,9 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
         </div>
         <input class="fi" id="fFreqC" type="number" min="0.1" step="0.01" placeholder="Custom (e.g. 0.29 for 2×/week)" style="margin-top:8px">
       </div>
+      </div>
       <div class="fi-row">
-        <div class="fg">
+        <div class="fg" id="leadTimeField">
           <label class="fl">Lead Time (days)</label>
           <input class="fi" id="fLead" type="number" min="0" value="7" placeholder="7">
           <div class="fi-hint">Order → delivery time</div>
@@ -326,19 +362,38 @@ function st(m){var f=m.frequency||1,dl=f>0?m.currentCount/f:9999,lt=m.leadTime||
 function stTxt(m){var f=m.frequency||1,dl=f>0?Math.floor(m.currentCount/f):9999,lt=m.leadTime||0;if(m.currentCount<=0)return'OUT';if(dl<=lt)return'ORDER NOW';if(dl<=lt+7)return'LOW';return dl+'d'}
 function rfBy(m){var f=m.frequency||1;if(f<=0||!(m.leadTime>0))return null;var dl=Math.floor(m.currentCount/f),oi=dl-(m.leadTime||0);if(oi<0)oi=0;var d=new Date();d.setDate(d.getDate()+oi);return{days:oi,date:d.toLocaleDateString('en-CA',{month:'short',day:'numeric'})}}
 
+
+function setType(t){
+  document.querySelectorAll('.type-btn').forEach(function(b){b.classList.toggle('active',b.dataset.val===t)});
+  var medFields=document.getElementById('medOnlyFields');
+  var leadField=document.getElementById('leadTimeField');
+  var label=document.getElementById('nameLabel');
+  if(t==='sup'){
+    medFields.style.display='none';
+    leadField.style.display='none';
+    label.textContent='Supplement Name';
+  }else{
+    medFields.style.display='';
+    leadField.style.display='';
+    label.textContent='Medication Name';
+  }
+}
+function getType(){var a=document.querySelector('.type-btn.active');return a?a.dataset.val:'med'}
+
 function render(){
   var meds=load(),app=document.getElementById('app'),sub=document.getElementById('hdrSub'),bar=document.getElementById('statsBar');
+  var medsList=meds.filter(function(x){return x.type!=='sup'});var supsList=meds.filter(function(x){return x.type==='sup'});
   if(!meds.length){
     app.innerHTML='<div class="empty"><div class="empty-ic">\uD83D\uDC8A</div><div class="empty-t">No medications</div><div class="empty-s">Tap + Add Med to get started</div></div>';
     sub.textContent='No medications tracked';bar.innerHTML='';return;
   }
   var gc=0,wc=0,dc=0;
-  meds.forEach(function(m){var s=st(m);if(s==='g')gc++;if(s==='w')wc++;if(s==='d')dc++});
-  sub.textContent=meds.length+' med'+(meds.length!==1?'s':'')+' \u00B7 '+new Date().toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'});
+  medsList.forEach(function(m){var s=st(m);if(s==='g')gc++;if(s==='w')wc++;if(s==='d')dc++});
+  sub.textContent=medsList.length+' med'+(medsList.length!==1?'s':'')+(supsList.length?' \u00B7 '+supsList.length+' supplement'+(supsList.length!==1?'s':''):'')+' \u00B7 '+new Date().toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'});
   bar.innerHTML='<div class="stat-chip"><span class="dot g"></span>'+gc+' Good</div>'+(wc?'<div class="stat-chip"><span class="dot w"></span>'+wc+' Low</div>':'')+(dc?'<div class="stat-chip"><span class="dot d"></span>'+dc+' Action</div>':'');
 
   var groups={};
-  meds.forEach(function(m){var t=m.timeOfDay||'morning';if(!groups[t])groups[t]=[];groups[t].push(m)});
+  medsList.forEach(function(m){var t=m.timeOfDay||'morning';if(!groups[t])groups[t]=[];groups[t].push(m)});
   var keys=Object.keys(groups).sort(function(a,b){return(TOD[a]?TOD[a].order:9)-(TOD[b]?TOD[b].order:9)});
 
   var h='';
@@ -370,6 +425,25 @@ function render(){
       h+='</div></div>';
     });
   });
+  // Supplements section
+  if(supsList.length){
+    h+='<div class="section-hdr"><span class="sec-icon">\uD83C\uDF3F</span>Supplements<span class="sec-count">'+supsList.length+'</span></div>';
+    supsList.forEach(function(m){
+      h+='<div class="sup-card" id="card-'+m.id+'"><div class="sup-main">';
+      h+='<div class="sup-icon">\uD83C\uDF3F</div>';
+      h+='<div class="sup-info"><div class="sup-name">'+esc(m.name)+'</div>';
+      h+='<div class="sup-dose">'+esc(m.dosage||'\u2014')+'</div></div>';
+      h+='<div><div class="sup-count">'+m.currentCount+'</div>';
+      h+='<div class="sup-count-label">left</div></div></div>';
+      h+='<div class="sup-actions">';
+      h+='<button class="act-btn primary" onclick="take(\''+m.id+'\')"><span class="ic">\uD83D\uDC8A</span> Took</button>';
+      h+='<button class="act-btn" onclick="addD(\''+m.id+'\')"><span class="ic">\uFF0B</span> Refill</button>';
+      h+='<button class="act-btn" onclick="openH(\''+m.id+'\')"><span class="ic">\uD83D\uDCCB</span></button>';
+      h+='<button class="act-btn" onclick="editM(\''+m.id+'\')"><span class="ic">\u270F\uFE0F</span></button>';
+      h+='<button class="act-btn" onclick="delM(\''+m.id+'\')"><span class="ic">\uD83D\uDDD1</span></button>';
+      h+='</div></div>';
+    });
+  }
   app.innerHTML=h;
 }
 
@@ -407,6 +481,7 @@ function openAdd(){
   document.getElementById('editId').value='';document.getElementById('mForm').reset();
   document.getElementById('fDate').value=td();document.getElementById('fLead').value='7';
   document.getElementById('mTitle').textContent='Add Medication';
+  setType('med');
   document.getElementById('submitBtn').textContent='Add Medication';
   document.querySelectorAll('.tod-btn,.freq-btn').forEach(function(b){b.classList.remove('active')});
   document.querySelector('.tod-btn[data-val="morning"]').classList.add('active');
@@ -428,7 +503,10 @@ function editM(id){
   document.querySelectorAll('.freq-btn').forEach(function(b){b.classList.toggle('active',parseFloat(b.dataset.val)===fv)});
   if(![1,2,3].includes(fv)){document.querySelectorAll('.freq-btn').forEach(function(b){b.classList.remove('active')});document.getElementById('fFreqC').value=fv}
   else{document.getElementById('fFreqC').value=''}
-  document.getElementById('mTitle').textContent='Edit Medication';
+  var tp=m.type||'med';
+  document.querySelectorAll('.type-btn').forEach(function(b){b.classList.toggle('active',b.dataset.val===tp)});
+  setType(tp);
+  document.getElementById('mTitle').textContent=tp==='sup'?'Edit Supplement':'Edit Medication';
   document.getElementById('submitBtn').textContent='Save Changes';
   document.getElementById('addOvr').classList.add('open');
 }
@@ -443,7 +521,8 @@ function save(e){
     if(m){var oc=m.currentCount;m.name=nm;m.dosage=ds;m.currentCount=ct;m.leadTime=lt;m.dateAdded=dt;m.frequency=fr;m.timeOfDay=tod;
       if(ct!==oc)m.history.push({action:'edited',from:oc,to:ct,date:new Date().toISOString()})}
   }else{
-    meds.push({id:gid(),name:nm,dosage:ds,startCount:ct,currentCount:ct,leadTime:lt,frequency:fr,timeOfDay:tod,dateAdded:dt,history:[{action:'created',count:ct,date:new Date().toISOString()}]});
+    var tp=getType();
+    meds.push({id:gid(),name:nm,dosage:ds,startCount:ct,currentCount:ct,leadTime:tp==='sup'?0:lt,frequency:tp==='sup'?1:fr,timeOfDay:tod,dateAdded:dt,type:tp,history:[{action:'created',count:ct,date:new Date().toISOString()}]});
   }
   store(meds);closeAdd();render();
 }
