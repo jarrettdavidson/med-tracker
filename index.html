@@ -243,6 +243,22 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
   letter-spacing:0.3px;pointer-events:none;
 }
 
+
+.pill-vis{
+  width:36px;height:36px;border-radius:18px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;flex-shrink:0;
+  font-family:'Outfit',sans-serif;letter-spacing:-0.3px;
+  border:2px solid rgba(255,255,255,0.15);
+}
+.card-purpose{
+  font-size:11px;color:var(--text-dim);margin-top:6px;
+  padding:4px 0;border-top:1px solid var(--border);
+  line-height:1.4;
+}
+.card-purpose strong{color:var(--text);font-weight:600}
+.pill-desc{font-size:10px;color:var(--text-dim);font-style:italic;margin-top:2px}
+
 .type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .type-btn{
   height:42px;border-radius:var(--r-sm);border:1px solid var(--border);
@@ -438,14 +454,19 @@ function render(){
       var rf=rfBy(m),rc='';
       if(rf){if(rf.days<=0)rc='refill-now';else if(rf.days<=7)rc='refill-soon'}
       h+='<div class="card" id="card-'+m.id+'"><div class="card-main">';
-      h+='<div class="card-top"><div><div class="card-name">'+esc(m.name)+'</div>';
-      h+='<div class="card-dosage">'+esc(m.dosage||'\u2014')+' \u00B7 '+fl+'</div></div>';
+      var pc=m.pillColor||'#999';var pi=m.pillInfo||'';
+      var ptc='#fff';if(pc){var hex=pc.replace('#','');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);if((r*299+g*587+b*114)/1000>150)ptc='#333'}
+      h+='<div class="card-top"><div style="display:flex;align-items:center;gap:10px"><div class="pill-vis" style="background:'+pc+'">'+(m.pillShape||'Rx')+'</div><div><div class="card-name">'+esc(m.name)+'</div>';
+      h+='<div class="card-dosage">'+esc(m.dosage||'\u2014')+' \u00B7 '+fl+'</div></div></div>';
       h+='<span class="card-badge '+s+'">'+txt+'</span></div>';
       h+='<div class="prog-row"><div class="prog-bar"><div class="prog-fill '+s+'" style="width:'+pct+'%"></div></div>';
       h+='<span class="prog-num">'+m.currentCount+'</span><span class="prog-of">/ '+m.startCount+'</span></div>';
       h+='<div class="info-chips"><span class="chip">Added '+fmtD(m.dateAdded)+'</span>';
       if(rf)h+='<span class="chip '+rc+'">'+(rf.days<=0?'\uD83D\uDEA8 Refill now':'\uD83D\uDCC5 Refill by '+rf.date)+'</span>';
-      h+='</div></div>';
+      h+='</div>';
+      if(m.purpose)h+='<div class="card-purpose"><strong>For:</strong> '+esc(m.purpose)+'</div>';
+      if(pi)h+='<div class="pill-desc">'+esc(pi)+'</div>';
+      h+='</div>';
       h+='<div class="card-actions">';
       h+='<button class="act-btn primary" onclick="take(\''+m.id+'\')"><span class="ic">\uD83D\uDC8A</span> Took Dose</button>';
       h+='<button class="act-btn" onclick="addD(\''+m.id+'\')"><span class="ic">\uFF0B</span> Refill</button>';
