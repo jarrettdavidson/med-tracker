@@ -478,12 +478,21 @@ function render(){
   });
   // Supplements section
   if(supsList.length){
-    h+='<div class="section-hdr"><span class="sec-icon">\uD83C\uDF3F</span>Supplements<span class="sec-count">'+supsList.length+'</span></div>';
+    var supsDone=supsList.every(function(m){return dosesToday(m)>=1||m.currentCount<=0});
+    if(supsDone){
+      h+='<div class="section-hdr"><span class="sec-icon">\uD83C\uDF3F</span>Supplements<span class="sec-count">'+supsList.length+'</span><span class="batch-done">\u2714 Done</span></div>';
+    }else{
+      h+='<div class="section-hdr"><span class="sec-icon">\uD83C\uDF3F</span>Supplements<span class="sec-count">'+supsList.length+'</span><button class="batch-btn" onclick="takeAllSups()">\u2714 Took All</button></div>';
+    }
     supsList.forEach(function(m){
+      var spc=m.pillColor||'#6B8E5A';var sptc='#fff';
+      if(spc){var shex=spc.replace('#','');var sr=parseInt(shex.substr(0,2),16),sg=parseInt(shex.substr(2,2),16),sb=parseInt(shex.substr(4,2),16);if((sr*299+sg*587+sb*114)/1000>150)sptc='#333'}
       h+='<div class="sup-card" id="card-'+m.id+'"><div class="sup-main">';
-      h+='<div class="sup-icon">\uD83C\uDF3F</div>';
+      h+='<div class="pill-vis" style="background:'+spc+';color:'+sptc+';width:32px;height:32px;border-radius:16px;font-size:9px">'+(m.pillShape||'\uD83C\uDF3F')+'</div>';
       h+='<div class="sup-info"><div class="sup-name">'+esc(m.name)+'</div>';
-      h+='<div class="sup-dose">'+esc(m.dosage||'\u2014')+'</div></div>';
+      h+='<div class="sup-dose">'+esc(m.dosage||'\u2014')+'</div>';
+      if(m.purpose)h+='<div style="font-size:10px;color:var(--text-dim);margin-top:2px">'+esc(m.purpose)+'</div>';
+      h+='</div>';
       h+='<div><div class="sup-count">'+m.currentCount+'</div>';
       h+='<div class="sup-count-label">left</div></div></div>';
       h+='<div class="sup-actions">';
@@ -558,6 +567,21 @@ function takeAll(tod){
     var el=document.getElementById('card-'+m.id);
     if(el){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}
   });
+}
+
+function takeAllSups(){
+  var meds=load();
+  var sups=meds.filter(function(m){return m.type==='sup'&&m.currentCount>0});
+  var due=sups.filter(function(m){return dosesToday(m)<1});
+  if(!due.length){alert('All supplements already taken today.');return}
+  var msg='Log '+due.length+' supplement'+(due.length!==1?'s':'')+'?\n\n'+due.map(function(m){return'\u2022 '+m.name+(m.dosage?' ('+m.dosage+')':'')}).join('\n');
+  if(!confirm(msg))return;
+  var now=new Date().toISOString();
+  due.forEach(function(m){
+    m.currentCount--;
+    m.history.push({action:'took',count:1,remaining:m.currentCount,date:now,tod:'supplement'});
+  });
+  store(meds);render();
 }
 
 function addD(id){
@@ -659,9 +683,10 @@ function closeHist(){document.getElementById('histOvr').classList.remove('open')
 document.getElementById('addOvr').addEventListener('click',function(e){if(e.target===this)closeAdd()});
 document.getElementById('histOvr').addEventListener('click',function(e){if(e.target===this)closeHist()});
 
-// Pre-populate on first load
+// Migrate: enrich existing records with drug info + ensure supplements work
 (function(){
-  if(localStorage.getItem(SK))return;
+  var ENRICH_VER='v3';
+  var isNew=!localStorage.getItem(SK);
   var now=new Date().toISOString(),d=now.split('T')[0];
   var meds=[
     {id:'m01',name:'Vyvanse',dosage:'60mg',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
@@ -674,9 +699,33 @@ document.getElementById('histOvr').addEventListener('click',function(e){if(e.tar
     {id:'m08',name:'Trazodone',dosage:'',frequency:1,timeOfDay:['night'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
     {id:'m09',name:'Senokot',dosage:'',frequency:1,timeOfDay:['night'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
     {id:'m10',name:'Methadone',dosage:'',frequency:3,timeOfDay:['asneeded'],startCount:90,currentCount:90,leadTime:7,dateAdded:d,history:[{action:'created',count:90,date:now}]},
-    {id:'m11',name:'Hydromorphone',dosage:'3mg',frequency:2,timeOfDay:['morning','night'],startCount:60,currentCount:60,leadTime:7,dateAdded:d,history:[{action:'created',count:60,date:now}]}
+    {id:'m11',name:'Hydromorphone',dosage:'3mg',frequency:2,timeOfDay:['morning','night'],startCount:60,currentCount:60,leadTime:7,dateAdded:d,history:[{action:'created',count:60,date:now}]},
+    {id:'m12',name:'Vitamin B12',dosage:'10,000mcg',frequency:1,timeOfDay:['morning'],startCount:60,currentCount:60,leadTime:0,dateAdded:d,type:'sup',pillColor:'#C62828',pillShape:'B12',pillInfo:'Red/pink tablet or sublingual',purpose:'Energy & nerve function \u2014 essential vitamin for red blood cell formation and neurological function.',history:[{action:'created',count:60,date:now}]}
   ];
-  localStorage.setItem(SK,JSON.stringify(meds));
+  if(isNew){
+    localStorage.setItem(SK,JSON.stringify(meds));
+  }else if(localStorage.getItem('medTracker_enriched')!==ENRICH_VER){
+    // Merge drug info into existing records by name match
+    var existing=JSON.parse(localStorage.getItem(SK))||[];
+    var infoMap={};meds.forEach(function(m){infoMap[m.name.toLowerCase()]=m});
+    existing.forEach(function(ex){
+      var info=infoMap[ex.name.toLowerCase()];
+      if(info){
+        if(!ex.purpose)ex.purpose=info.purpose;
+        if(!ex.pillColor)ex.pillColor=info.pillColor;
+        if(!ex.pillShape)ex.pillShape=info.pillShape;
+        if(!ex.pillInfo)ex.pillInfo=info.pillInfo;
+        if(!ex.timeOfDay||!Array.isArray(ex.timeOfDay)){
+          ex.timeOfDay=info.timeOfDay;
+        }
+      }
+      // Normalize timeOfDay to array
+      if(ex.timeOfDay&&!Array.isArray(ex.timeOfDay))ex.timeOfDay=[ex.timeOfDay];
+      if(!ex.timeOfDay)ex.timeOfDay=['morning'];
+    });
+    localStorage.setItem(SK,JSON.stringify(existing));
+    localStorage.setItem('medTracker_enriched',ENRICH_VER);
+  }
 })();
 
 render();
