@@ -5,29 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Med Tracker</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#141821">
+<meta name="theme-color" content="#F5F6FA">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Med Tracker">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="format-detection" content="telephone=no">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #141821;
-  --surface: #1C2130;
-  --card: #232838;
-  --card-hover: #2A3045;
-  --border: #2E3448;
-  --text: #E4E7EE;
-  --text-dim: #7A8199;
-  --teal: #3DD6C8;
-  --teal-dim: rgba(61,214,200,0.10);
-  --teal-mid: rgba(61,214,200,0.20);
-  --amber: #F0B957;
-  --amber-dim: rgba(240,185,87,0.10);
-  --coral: #EF6B6B;
-  --coral-dim: rgba(239,107,107,0.10);
+  --bg: #F5F6FA;
+  --surface: #FFFFFF;
+  --card: #FFFFFF;
+  --card-hover: #F0F1F7;
+  --border: #E4E6EF;
+  --text: #2E3247;
+  --text-dim: #8C90A7;
+  --teal: #6A9FD8;
+  --teal-dim: rgba(106,159,216,0.12);
+  --teal-mid: rgba(106,159,216,0.20);
+  --amber: #DBA04A;
+  --amber-dim: rgba(219,160,74,0.12);
+  --coral: #D47070;
+  --coral-dim: rgba(212,112,112,0.12);
   --r: 14px;
   --r-sm: 10px;
   --safe-t: env(safe-area-inset-top, 0px);
@@ -46,7 +46,7 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
 
 .hdr{
   position:sticky;top:0;z-index:100;
-  background:rgba(20,24,33,0.92);
+  background:rgba(245,246,250,0.92);
   backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
   border-bottom:1px solid var(--border);
   padding:calc(14px + var(--safe-t)) 20px 14px;
@@ -92,7 +92,7 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
 
 .card{
   background:var(--card);border:1px solid var(--border);
-  border-radius:var(--r);margin-bottom:10px;overflow:hidden;transition:border-color 0.2s;
+  border-radius:var(--r);margin-bottom:10px;overflow:hidden;transition:border-color 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.04);
 }
 .card.flash{animation:flashPulse 0.4s ease}
 @keyframes flashPulse{0%{border-color:var(--teal)}100%{border-color:var(--border)}}
@@ -138,10 +138,10 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
 .fab{
   position:fixed;bottom:calc(24px + var(--safe-b));right:20px;
   height:52px;padding:0 22px;border-radius:26px;
-  background:var(--teal);color:var(--bg);border:none;
+  background:var(--teal);color:#fff;border:none;
   font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;
   cursor:pointer;display:flex;align-items:center;gap:8px;
-  box-shadow:0 4px 24px rgba(61,214,200,0.3);
+  box-shadow:0 4px 24px rgba(106,159,216,0.30);
   z-index:100;transition:transform 0.2s;
 }
 .fab:active{transform:scale(0.95)}
@@ -149,7 +149,7 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
 
 .overlay{
   display:none;position:fixed;inset:0;
-  background:rgba(10,12,18,0.6);z-index:200;
+  background:rgba(46,50,71,0.35);z-index:200;
   align-items:flex-end;justify-content:center;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
