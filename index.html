@@ -893,6 +893,28 @@ document.getElementById('historyModal').addEventListener('click', function(e) {
   if (e.target === this) closeHistoryModal();
 });
 
+
+// --- Pre-populate medications on first load ---
+(function() {
+  if (localStorage.getItem('medTracker_v2')) return; // already has data
+  var now = new Date().toISOString();
+  var today = now.split('T')[0];
+  var meds = [
+    { id:'med01', name:'Vyvanse', dosage:'60mg', frequency:1, startCount:30, currentCount:30, leadTime:7, dateAdded:today, history:[{action:'created',count:30,date:now}] },
+    { id:'med02', name:'Trintellix', dosage:'10mg', frequency:1, startCount:30, currentCount:30, leadTime:7, dateAdded:today, history:[{action:'created',count:30,date:now}] },
+    { id:'med03', name:'Liothyronine', dosage:'20mg', frequency:1, startCount:30, currentCount:30, leadTime:7, dateAdded:today, history:[{action:'created',count:30,date:now}] },
+    { id:'med04', name:'Levothyroxine', dosage:'0.088mg', frequency:1, startCount:30, currentCount:30, leadTime:7, dateAdded:today, history:[{action:'created',count:30,date:now}] },
+    { id:'med05', name:'Anastrozole', dosage:'½ pill', frequency:0.29, startCount:30, currentCount:30, leadTime:7, dateAdded:today, history:[{action:'created',count:30,date:now}] },
+    { id:'med06', name:'Ondansetron', dosage:'', frequency:1, startCount:30, currentCount:30, leadTime:7, dateAdded:today, history:[{action:'created',count:30,date:now}] },
+    { id:'med07', name:'Baclofen', dosage:'', frequency:2, startCount:60, currentCount:60, leadTime:7, dateAdded:today, history:[{action:'created',count:60,date:now}] },
+    { id:'med08', name:'Trazodone', dosage:'', frequency:1, startCount:30, currentCount:30, leadTime:7, dateAdded:today, history:[{action:'created',count:30,date:now}] },
+    { id:'med09', name:'Senokot', dosage:'', frequency:1, startCount:30, currentCount:30, leadTime:7, dateAdded:today, history:[{action:'created',count:30,date:now}] },
+    { id:'med10', name:'Methadone', dosage:'', frequency:3, startCount:90, currentCount:90, leadTime:7, dateAdded:today, history:[{action:'created',count:90,date:now}] },
+    { id:'med11', name:'Hydromorphone', dosage:'3mg', frequency:2, startCount:60, currentCount:60, leadTime:7, dateAdded:today, history:[{action:'created',count:60,date:now}] }
+  ];
+  localStorage.setItem('medTracker_v2', JSON.stringify(meds));
+})();
+
 // Init
 renderMeds();
 </script>
