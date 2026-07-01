@@ -440,7 +440,10 @@ function render(){
   var h='';
   keys.forEach(function(k){
     var meta=TOD[k]||{label:k,icon:'\uD83D\uDC8A',order:9},list=groups[k];
-    var allDone=list.every(function(m){return dosesToday(m,k)>=1||m.currentCount<=0});
+    var allDone=list.every(function(m){
+      if(k==='asneeded'){var fq=m.frequency||1;var mx=fq>=1?Math.ceil(fq):1;return dosesToday(m)>=mx||m.currentCount<=0}
+      return dosesToday(m,k)>=1||m.currentCount<=0;
+    });
     if(allDone){
       h+='<div class="section-hdr"><span class="sec-icon">'+meta.icon+'</span>'+meta.label+'<span class="sec-count">'+list.length+'</span><span class="batch-done">\u2714 Done</span></div>';
     }else{
@@ -453,7 +456,7 @@ function render(){
       var fl=f===1?'1\u00D7/day':f===2?'2\u00D7/day':f===3?'3\u00D7/day':f===0.5?'Every other day':f<1?(Math.round(f*7)+'\u00D7/wk'):f+'\u00D7/day';
       var rf=rfBy(m),rc='';
       if(rf){if(rf.days<=0)rc='refill-now';else if(rf.days<=7)rc='refill-soon'}
-      h+='<div class="card" id="card-'+m.id+'"><div class="card-main">';
+      h+='<div class="card" id="card-'+m.id+'-'+k+'" data-med="'+m.id+'"><div class="card-main">';
       var pc=m.pillColor||'#999';var pi=m.pillInfo||'';
       var ptc='#fff';if(pc){var hex=pc.replace('#','');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);if((r*299+g*587+b*114)/1000>150)ptc='#333'}
       h+='<div class="card-top"><div style="display:flex;align-items:center;gap:10px"><div class="pill-vis" style="background:'+pc+'">'+(m.pillShape||'Rx')+'</div><div><div class="card-name">'+esc(m.name)+'</div>';
@@ -537,8 +540,9 @@ function take(id,tod){
   m.currentCount--;
   m.history.push({action:'took',count:1,remaining:m.currentCount,date:new Date().toISOString(),tod:tod||null});
   store(meds);render();
-  var el=document.getElementById('card-'+id);
-  if(el){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}
+  document.querySelectorAll('[data-med="'+id+'"], #card-'+id).forEach(function(el){
+    el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
+  });
 }
 function takeAll(tod){
   var meds=load();
@@ -546,6 +550,7 @@ function takeAll(tod){
   if(!group.length){alert('No doses to log in this group.');return}
   // Check which ones haven't been taken today
   var due=group.filter(function(m){
+    if(tod==='asneeded'){var fq=m.frequency||1;var mx=fq>=1?Math.ceil(fq):1;return dosesToday(m)<mx}
     return dosesToday(m,tod)<1;
   });
   var already=group.length-due.length;
@@ -564,8 +569,9 @@ function takeAll(tod){
   store(meds);render();
   // Flash all cards
   due.forEach(function(m){
-    var el=document.getElementById('card-'+m.id);
-    if(el){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}
+    document.querySelectorAll('[data-med="'+m.id+'"]').forEach(function(el){
+      el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
+    });
   });
 }
 
@@ -650,7 +656,10 @@ function save(e){
   var dt=document.getElementById('fDate').value,fr=gFreq(),tod=gTod();
   if(eid){
     var m=meds.find(function(x){return x.id===eid});
-    if(m){var oc=m.currentCount;m.name=nm;m.dosage=ds;m.currentCount=ct;m.leadTime=lt;m.dateAdded=dt;m.frequency=fr;m.timeOfDay=tod;
+    if(m){var oc=m.currentCount;var tp2=getType();
+      m.name=nm;m.dosage=ds;m.currentCount=ct;m.dateAdded=dt;m.timeOfDay=tod;m.type=tp2;
+      m.leadTime=tp2==='sup'?0:lt;m.frequency=tp2==='sup'?1:fr;
+      if(ct>m.startCount)m.startCount=ct;
       if(ct!==oc)m.history.push({action:'edited',from:oc,to:ct,date:new Date().toISOString()})}
   }else{
     var tp=getType();
