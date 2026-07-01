@@ -366,7 +366,12 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 
 var SK='medTracker_v2';
-function load(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
+function load(){
+  try{var meds=JSON.parse(localStorage.getItem(SK))||[];
+    meds.forEach(function(m){if(m.timeOfDay&&!Array.isArray(m.timeOfDay))m.timeOfDay=[m.timeOfDay]});
+    return meds;
+  }catch(e){return[]}
+}
 function store(m){localStorage.setItem(SK,JSON.stringify(m))}
 function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function td(){return new Date().toISOString().split('T')[0]}
@@ -410,13 +415,16 @@ function render(){
   bar.innerHTML='<div class="stat-chip"><span class="dot g"></span>'+gc+' Good</div>'+(wc?'<div class="stat-chip"><span class="dot w"></span>'+wc+' Low</div>':'')+(dc?'<div class="stat-chip"><span class="dot d"></span>'+dc+' Action</div>':'');
 
   var groups={};
-  medsList.forEach(function(m){var t=m.timeOfDay||'morning';if(!groups[t])groups[t]=[];groups[t].push(m)});
+  medsList.forEach(function(m){
+    var tods=Array.isArray(m.timeOfDay)?m.timeOfDay:(m.timeOfDay?[m.timeOfDay]:['morning']);
+    tods.forEach(function(t){if(!groups[t])groups[t]=[];groups[t].push(m)});
+  });
   var keys=Object.keys(groups).sort(function(a,b){return(TOD[a]?TOD[a].order:9)-(TOD[b]?TOD[b].order:9)});
 
   var h='';
   keys.forEach(function(k){
     var meta=TOD[k]||{label:k,icon:'\uD83D\uDC8A',order:9},list=groups[k];
-    var allDone=list.every(function(m){var freq=m.frequency||1;var mx=freq>=1?Math.ceil(freq):1;return dosesToday(m)>=mx||m.currentCount<=0});
+    var allDone=list.every(function(m){return dosesToday(m,k)>=1||m.currentCount<=0});
     if(allDone){
       h+='<div class="section-hdr"><span class="sec-icon">'+meta.icon+'</span>'+meta.label+'<span class="sec-count">'+list.length+'</span><span class="batch-done">\u2714 Done</span></div>';
     }else{
@@ -469,44 +477,46 @@ function render(){
   app.innerHTML=h;
 }
 
-function dosesToday(m){
+function dosesToday(m,forTod){
   var now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
   var end=start+86400000;
   if(!m.history)return 0;
   return m.history.filter(function(h){
     if(h.action!=='took')return false;
     var t=new Date(h.date).getTime();
-    return t>=start&&t<end;
+    if(t<start||t>=end)return false;
+    if(forTod&&h.tod&&h.tod!==forTod)return false;
+    return true;
   }).reduce(function(sum,h){return sum+(h.count||1)},0);
 }
-function take(id){
+function take(id,tod){
   var meds=load(),m=meds.find(function(x){return x.id===id});
   if(!m)return;
   if(m.currentCount<=0){alert('No doses remaining. Time to refill!');return}
   var freq=m.frequency||1;
   var taken=dosesToday(m);
-  // For weekly meds (freq<1), max 1 per day
   var maxPerDay=freq>=1?Math.ceil(freq):1;
-  if(taken>=maxPerDay){
+  // Check if already taken for this specific time slot
+  if(tod&&dosesToday(m,tod)>=1){
+    if(!confirm('You\'ve already logged '+m.name+' for this time slot today.\n\nLog another anyway?'))return;
+  }else if(taken>=maxPerDay){
     if(!confirm('You\'ve already logged '+taken+' dose'+(taken!==1?'s':'')+' today (max '+maxPerDay+'/day).\n\nLog another anyway?'))return;
   }else{
     if(!confirm('Log 1 dose of '+m.name+'?'))return;
   }
   m.currentCount--;
-  m.history.push({action:'took',count:1,remaining:m.currentCount,date:new Date().toISOString()});
+  m.history.push({action:'took',count:1,remaining:m.currentCount,date:new Date().toISOString(),tod:tod||null});
   store(meds);render();
   var el=document.getElementById('card-'+id);
   if(el){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}
 }
 function takeAll(tod){
   var meds=load();
-  var group=meds.filter(function(m){return(m.timeOfDay||'morning')===tod&&m.type!=='sup'&&m.currentCount>0});
+  var group=meds.filter(function(m){var tods=Array.isArray(m.timeOfDay)?m.timeOfDay:[m.timeOfDay||'morning'];return tods.indexOf(tod)!==-1&&m.type!=='sup'&&m.currentCount>0});
   if(!group.length){alert('No doses to log in this group.');return}
   // Check which ones haven't been taken today
   var due=group.filter(function(m){
-    var freq=m.frequency||1;
-    var maxPerDay=freq>=1?Math.ceil(freq):1;
-    return dosesToday(m)<maxPerDay;
+    return dosesToday(m,tod)<1;
   });
   var already=group.length-due.length;
   var msg='Log dose for '+due.length+' medication'+(due.length!==1?'s':'')+'?';
@@ -519,7 +529,7 @@ function takeAll(tod){
   var now=new Date().toISOString();
   due.forEach(function(m){
     m.currentCount--;
-    m.history.push({action:'took',count:1,remaining:m.currentCount,date:now});
+    m.history.push({action:'took',count:1,remaining:m.currentCount,date:now,tod:tod});
   });
   store(meds);render();
   // Flash all cards
@@ -540,7 +550,7 @@ function addD(id){
 function delM(id){if(!confirm('Delete this medication?'))return;store(load().filter(function(x){return x.id!==id}));render()}
 
 document.querySelectorAll('.tod-btn').forEach(function(b){
-  b.addEventListener('click',function(){document.querySelectorAll('.tod-btn').forEach(function(x){x.classList.remove('active')});b.classList.add('active')});
+  b.addEventListener('click',function(){b.classList.toggle('active')});
 });
 document.querySelectorAll('.freq-btn').forEach(function(b){
   b.addEventListener('click',function(){document.querySelectorAll('.freq-btn').forEach(function(x){x.classList.remove('active')});b.classList.add('active');document.getElementById('fFreqC').value=''});
@@ -548,7 +558,10 @@ document.querySelectorAll('.freq-btn').forEach(function(b){
 document.getElementById('fFreqC').addEventListener('input',function(){if(this.value)document.querySelectorAll('.freq-btn').forEach(function(x){x.classList.remove('active')})});
 
 function gFreq(){var a=document.querySelector('.freq-btn.active'),c=document.getElementById('fFreqC').value;if(c)return parseFloat(c);if(a)return parseFloat(a.dataset.val);return 1}
-function gTod(){var a=document.querySelector('.tod-btn.active');return a?a.dataset.val:'morning'}
+function gTod(){
+  var arr=[];document.querySelectorAll('.tod-btn.active').forEach(function(b){arr.push(b.dataset.val)});
+  return arr.length?arr:['morning'];
+}
 
 function openAdd(){
   document.getElementById('editId').value='';document.getElementById('mForm').reset();
@@ -571,7 +584,8 @@ function editM(id){
   document.getElementById('fCount').value=m.currentCount;
   document.getElementById('fLead').value=m.leadTime||0;
   document.getElementById('fDate').value=m.dateAdded||td();
-  document.querySelectorAll('.tod-btn').forEach(function(b){b.classList.toggle('active',b.dataset.val===(m.timeOfDay||'morning'))});
+  var todArr=Array.isArray(m.timeOfDay)?m.timeOfDay:(m.timeOfDay?[m.timeOfDay]:['morning']);
+  document.querySelectorAll('.tod-btn').forEach(function(b){b.classList.toggle('active',todArr.indexOf(b.dataset.val)!==-1)});
   var fv=m.frequency||1;
   document.querySelectorAll('.freq-btn').forEach(function(b){b.classList.toggle('active',parseFloat(b.dataset.val)===fv)});
   if(![1,2,3].includes(fv)){document.querySelectorAll('.freq-btn').forEach(function(b){b.classList.remove('active')});document.getElementById('fFreqC').value=fv}
@@ -629,17 +643,17 @@ document.getElementById('histOvr').addEventListener('click',function(e){if(e.tar
   if(localStorage.getItem(SK))return;
   var now=new Date().toISOString(),d=now.split('T')[0];
   var meds=[
-    {id:'m01',name:'Vyvanse',dosage:'60mg',frequency:1,timeOfDay:'morning',startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
-    {id:'m02',name:'Trintellix',dosage:'10mg',frequency:1,timeOfDay:'morning',startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
-    {id:'m03',name:'Liothyronine',dosage:'20mg',frequency:1,timeOfDay:'morning',startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
-    {id:'m04',name:'Levothyroxine',dosage:'0.088mg',frequency:1,timeOfDay:'morning',startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
-    {id:'m05',name:'Anastrozole',dosage:'\u00BD pill',frequency:0.29,timeOfDay:'morning',startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
-    {id:'m06',name:'Ondansetron',dosage:'',frequency:1,timeOfDay:'morning',startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
-    {id:'m07',name:'Baclofen',dosage:'',frequency:2,timeOfDay:'morning',startCount:60,currentCount:60,leadTime:7,dateAdded:d,history:[{action:'created',count:60,date:now}]},
-    {id:'m08',name:'Trazodone',dosage:'',frequency:1,timeOfDay:'night',startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
-    {id:'m09',name:'Senokot',dosage:'',frequency:1,timeOfDay:'night',startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
-    {id:'m10',name:'Methadone',dosage:'',frequency:3,timeOfDay:'asneeded',startCount:90,currentCount:90,leadTime:7,dateAdded:d,history:[{action:'created',count:90,date:now}]},
-    {id:'m11',name:'Hydromorphone',dosage:'3mg',frequency:2,timeOfDay:'morning',startCount:60,currentCount:60,leadTime:7,dateAdded:d,history:[{action:'created',count:60,date:now}]}
+    {id:'m01',name:'Vyvanse',dosage:'60mg',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
+    {id:'m02',name:'Trintellix',dosage:'10mg',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
+    {id:'m03',name:'Liothyronine',dosage:'20mg',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
+    {id:'m04',name:'Levothyroxine',dosage:'0.088mg',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
+    {id:'m05',name:'Anastrozole',dosage:'\u00BD pill',frequency:0.29,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
+    {id:'m06',name:'Ondansetron',dosage:'',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
+    {id:'m07',name:'Baclofen',dosage:'',frequency:2,timeOfDay:['morning','night'],startCount:60,currentCount:60,leadTime:7,dateAdded:d,history:[{action:'created',count:60,date:now}]},
+    {id:'m08',name:'Trazodone',dosage:'',frequency:1,timeOfDay:['night'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
+    {id:'m09',name:'Senokot',dosage:'',frequency:1,timeOfDay:['night'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
+    {id:'m10',name:'Methadone',dosage:'',frequency:3,timeOfDay:['asneeded'],startCount:90,currentCount:90,leadTime:7,dateAdded:d,history:[{action:'created',count:90,date:now}]},
+    {id:'m11',name:'Hydromorphone',dosage:'3mg',frequency:2,timeOfDay:['morning','night'],startCount:60,currentCount:60,leadTime:7,dateAdded:d,history:[{action:'created',count:60,date:now}]}
   ];
   localStorage.setItem(SK,JSON.stringify(meds));
 })();
