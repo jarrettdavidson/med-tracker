@@ -226,6 +226,23 @@ input,textarea,select{-webkit-user-select:auto;user-select:auto}
 .empty-s{font-size:13px}
 
 
+
+.batch-btn{
+  margin-left:auto;height:30px;padding:0 12px;border-radius:15px;
+  border:1px solid var(--teal);background:var(--teal-dim);
+  color:var(--teal);font-size:11px;font-weight:700;
+  font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;
+  transition:all 0.15s;text-transform:uppercase;letter-spacing:0.3px;
+}
+.batch-btn:active{opacity:0.7;transform:scale(0.96)}
+.batch-done{
+  margin-left:auto;height:30px;padding:0 12px;border-radius:15px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--text-dim);font-size:11px;font-weight:600;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  letter-spacing:0.3px;pointer-events:none;
+}
+
 .type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .type-btn{
   height:42px;border-radius:var(--r-sm);border:1px solid var(--border);
@@ -399,7 +416,12 @@ function render(){
   var h='';
   keys.forEach(function(k){
     var meta=TOD[k]||{label:k,icon:'\uD83D\uDC8A',order:9},list=groups[k];
-    h+='<div class="section-hdr"><span class="sec-icon">'+meta.icon+'</span>'+meta.label+'<span class="sec-count">'+list.length+'</span></div>';
+    var allDone=list.every(function(m){var freq=m.frequency||1;var mx=freq>=1?Math.ceil(freq):1;return dosesToday(m)>=mx||m.currentCount<=0});
+    if(allDone){
+      h+='<div class="section-hdr"><span class="sec-icon">'+meta.icon+'</span>'+meta.label+'<span class="sec-count">'+list.length+'</span><span class="batch-done">\u2714 Done</span></div>';
+    }else{
+      h+='<div class="section-hdr"><span class="sec-icon">'+meta.icon+'</span>'+meta.label+'<span class="sec-count">'+list.length+'</span><button class="batch-btn" onclick="takeAll(\''+k+'\')">✔ Took All</button></div>';
+    }
     list.forEach(function(m){
       var s=st(m),txt=stTxt(m);
       var pct=m.startCount>0?Math.max(0,Math.min(100,(m.currentCount/m.startCount)*100)):0;
@@ -476,6 +498,37 @@ function take(id){
   var el=document.getElementById('card-'+id);
   if(el){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}
 }
+function takeAll(tod){
+  var meds=load();
+  var group=meds.filter(function(m){return(m.timeOfDay||'morning')===tod&&m.type!=='sup'&&m.currentCount>0});
+  if(!group.length){alert('No doses to log in this group.');return}
+  // Check which ones haven't been taken today
+  var due=group.filter(function(m){
+    var freq=m.frequency||1;
+    var maxPerDay=freq>=1?Math.ceil(freq):1;
+    return dosesToday(m)<maxPerDay;
+  });
+  var already=group.length-due.length;
+  var msg='Log dose for '+due.length+' medication'+(due.length!==1?'s':'')+'?';
+  if(due.length){
+    msg+='\n\n'+due.map(function(m){return'\u2022 '+m.name+(m.dosage?' ('+m.dosage+')':'')}).join('\n');
+  }
+  if(already>0)msg+='\n\n('+already+' already taken today — skipped)';
+  if(!due.length){alert('All medications in this group already taken today.');return}
+  if(!confirm(msg))return;
+  var now=new Date().toISOString();
+  due.forEach(function(m){
+    m.currentCount--;
+    m.history.push({action:'took',count:1,remaining:m.currentCount,date:now});
+  });
+  store(meds);render();
+  // Flash all cards
+  due.forEach(function(m){
+    var el=document.getElementById('card-'+m.id);
+    if(el){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}
+  });
+}
+
 function addD(id){
   var amt=prompt('How many doses to add?','1');
   if(!amt)return;amt=parseInt(amt);if(isNaN(amt)||amt<=0)return;
