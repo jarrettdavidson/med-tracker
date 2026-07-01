@@ -1,4 +1,4 @@
-var CACHE_NAME = 'med-tracker-v3';
+var CACHE_NAME = 'med-tracker-v4';
 var ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', function(e) { e.waitUntil(caches.open(CACHE_NAME).then(function(c) { return c.addAll(ASSETS) })); self.skipWaiting(); });
 self.addEventListener('activate', function(e) { e.waitUntil(caches.keys().then(function(k) { return Promise.all(k.filter(function(n) { return n !== CACHE_NAME }).map(function(n) { return caches.delete(n) })) })); self.clients.claim(); });
