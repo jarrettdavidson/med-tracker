@@ -751,7 +751,7 @@ document.getElementById('histOvr').addEventListener('click',function(e){if(e.tar
 
 // Migrate: enrich existing records with drug info + ensure supplements work
 (function(){
-  var ENRICH_VER='v3';
+  var ENRICH_VER='v4';
   var isNew=!localStorage.getItem(SK);
   var now=new Date().toISOString(),d=now.split('T')[0];
   var meds=[
@@ -760,12 +760,12 @@ document.getElementById('histOvr').addEventListener('click',function(e){if(e.tar
     {id:'m03',name:'Liothyronine',dosage:'20mg',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
     {id:'m04',name:'Levothyroxine',dosage:'0.088mg',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
     {id:'m05',name:'Anastrozole',dosage:'\u00BD pill',frequency:0.29,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
-    {id:'m06',name:'Ondansetron',dosage:'',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
     {id:'m07',name:'Baclofen',dosage:'',frequency:2,timeOfDay:['morning','night'],startCount:60,currentCount:60,leadTime:7,dateAdded:d,history:[{action:'created',count:60,date:now}]},
     {id:'m08',name:'Trazodone',dosage:'',frequency:1,timeOfDay:['night'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
     {id:'m09',name:'Senokot',dosage:'',frequency:1,timeOfDay:['night'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,history:[{action:'created',count:30,date:now}]},
-    {id:'m10',name:'Methadone',dosage:'',frequency:3,timeOfDay:['asneeded'],startCount:90,currentCount:90,leadTime:7,dateAdded:d,history:[{action:'created',count:90,date:now}]},
-    {id:'m11',name:'Hydromorphone',dosage:'3mg',frequency:2,timeOfDay:['morning','night'],startCount:60,currentCount:60,leadTime:7,dateAdded:d,history:[{action:'created',count:60,date:now}]},
+    
+    {id:'m13',name:'Plavix',dosage:'75mg',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,pillColor:'#E8A0B4',pillShape:'75',pillInfo:'Pink round film-coated tablet, imprint 75',purpose:'Blood thinner (clopidogrel) \u2014 antiplatelet. Prevents clots after stroke. Do not miss doses.',history:[{action:'created',count:30,date:now}]},
+    {id:'m14',name:'ASA (Aspirin)',dosage:'81mg',frequency:1,timeOfDay:['morning'],startCount:30,currentCount:30,leadTime:7,dateAdded:d,pillColor:'#F2D06B',pillShape:'81',pillInfo:'Yellow enteric-coated low-dose tablet',purpose:'Antiplatelet \u2014 low-dose aspirin. Works with Plavix to prevent clot formation post-stroke.',history:[{action:'created',count:30,date:now}]},
     {id:'m12',name:'Vitamin B12',dosage:'10,000mcg',frequency:1,timeOfDay:['morning'],startCount:60,currentCount:60,leadTime:0,dateAdded:d,type:'sup',pillColor:'#C62828',pillShape:'B12',pillInfo:'Red/pink tablet or sublingual',purpose:'Energy & nerve function \u2014 essential vitamin for red blood cell formation and neurological function.',history:[{action:'created',count:60,date:now}]}
   ];
   if(isNew){
